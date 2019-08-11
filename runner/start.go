@@ -51,7 +51,7 @@ func start() {
 			mainLog("Started! (%d Goroutines)", runtime.NumGoroutine())
 			err := removeBuildErrorsLog()
 			if err != nil {
-				mainLog(err.Error())
+				mainLog("%s", err.Error())
 			}
 
 			buildFailed := false
@@ -75,7 +75,7 @@ func start() {
 			}
 
 			started = true
-			mainLog(strings.Repeat("-", 20))
+			mainLog("%s", strings.Repeat("-", 20))
 		}
 	}()
 }

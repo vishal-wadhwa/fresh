@@ -39,3 +39,11 @@ func (a appLogWriter) Write(p []byte) (n int, err error) {
 
 	return len(p), nil
 }
+
+type debuggerLogWriter struct{}
+
+func (d debuggerLogWriter) Write(p []byte) (n int, err error) {
+	debuggerLog("%s", string(p))
+
+	return len(p), nil
+}

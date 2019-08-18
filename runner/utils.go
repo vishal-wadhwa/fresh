@@ -46,6 +46,9 @@ func isWatchedFile(path string) bool {
 	}
 
 	ext := filepath.Ext(path)
+	if ext == filepath.Ext(debugFilePath()) {
+		return true
+	}
 
 	for _, e := range strings.Split(settings["valid_ext"], ",") {
 		if strings.TrimSpace(e) == ext {
@@ -86,4 +89,9 @@ func removeBuildErrorsLog() error {
 	err := os.Remove(buildErrorsFilePath())
 
 	return err
+}
+
+func isDebuggingEnabled() bool {
+	_, err := os.Stat(debugFilePath())
+	return err == nil
 }

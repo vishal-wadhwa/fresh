@@ -5,10 +5,25 @@ import (
 	"os/exec"
 )
 
-func run() bool {
-	runnerLog("Running...")
+func getRunCommand(debug bool) (string, []string) {
+	if debug {
+		return "dlv", []string{"exec",
+			buildPath(),
+			"--listen=:40000",
+			"--headless",
+			"--api-version=2",
+			// "--log",
+		}
+	}
 
-	cmd := exec.Command(buildPath())
+	return buildPath(), []string{}
+}
+
+func run(debug bool) bool {
+	runnerLog("Running (isDebug: %v)...", debug)
+
+	cname, args := getRunCommand(debug)
+	cmd := exec.Command(cname, args...)
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -25,8 +40,12 @@ func run() bool {
 		fatal(err)
 	}
 
-	go io.Copy(appLogWriter{}, stderr)
-	go io.Copy(appLogWriter{}, stdout)
+	var writer io.Writer = appLogWriter{}
+	if debug {
+		writer = debuggerLogWriter{}
+	}
+	go io.Copy(writer, stderr)
+	go io.Copy(writer, stdout)
 
 	go func() {
 		<-stopChannel

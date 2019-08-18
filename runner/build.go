@@ -7,10 +7,22 @@ import (
 	"os/exec"
 )
 
-func build() (string, bool) {
-	buildLog("Building...")
+func getBuildCommand(debug bool) (string, []string) {
+	args := []string{"build"}
+	if debug {
+		args = append(args, "-gcflags=\"all=-N -l\"")
+	}
+	buildDest := []string{"-o", buildPath(), root()}
+	args = append(args, buildDest...)
 
-	cmd := exec.Command("go", "build", "-o", buildPath(), root())
+	return "go", args
+}
+
+func build(debug bool) (string, bool) {
+	buildLog("Building (isDebug: %v)...", debug)
+
+	gocmd, args := getBuildCommand(debug)
+	cmd := exec.Command(gocmd, args...)
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {

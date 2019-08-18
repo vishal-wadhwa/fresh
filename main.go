@@ -15,11 +15,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/vishal-wadhwa/fresh/runner"
+	"github.com/vishal-wadhwa/fresh-dlv/runner"
 	"os"
 )
 
 func main() {
+	os.Setenv("TZ", "Asia/Calcutta")
 	configPath := flag.String("c", "", "config file path")
 	flag.Parse()
 

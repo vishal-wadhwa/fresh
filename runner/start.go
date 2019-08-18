@@ -16,6 +16,7 @@ var (
 	runnerLog    logFunc
 	buildLog     logFunc
 	appLog       logFunc
+	debuggerLog  logFunc
 )
 
 func flushEvents() {
@@ -54,9 +55,10 @@ func start() {
 				mainLog("%s", err.Error())
 			}
 
+			debug := isDebuggingEnabled()
 			buildFailed := false
 			if shouldRebuild(eventName) {
-				errorMessage, ok := build()
+				errorMessage, ok := build(debug)
 				if !ok {
 					buildFailed = true
 					mainLog("Build Failed: \n %s", errorMessage)
@@ -71,7 +73,7 @@ func start() {
 				if started {
 					stopChannel <- true
 				}
-				run()
+				run(debug)
 			}
 
 			started = true
@@ -91,6 +93,7 @@ func initLogFuncs() {
 	runnerLog = newLogFunc("runner")
 	buildLog = newLogFunc("build")
 	appLog = newLogFunc("app")
+	debuggerLog = newLogFunc("debugger")
 }
 
 func setEnvVars() {

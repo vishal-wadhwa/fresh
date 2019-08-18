@@ -16,13 +16,14 @@ func TestIsWatchedFile(t *testing.T) {
 		{"test.css", false},
 		{"test-executable", false},
 		{"./tmp/test.go", false},
+		{".debug", true},
 	}
 
 	for _, test := range tests {
 		actual := isWatchedFile(test.file)
 
 		if actual != test.expected {
-			t.Errorf("Expected %v, got %v", test.expected, actual)
+			t.Errorf("Expected %v, got %v for file %s", test.expected, actual, test.file)
 		}
 	}
 }
@@ -38,6 +39,8 @@ func TestShouldRebuild(t *testing.T) {
 		{`"unknown.extension": DELETED`, true},
 		{`"no_extension": ADDED`, true},
 		{`"./a/path/test.go": MODIFIED`, true},
+		{`".debug": CREATED`, true},
+		{`".debug": DELETED`, true},
 	}
 
 	for _, test := range tests {

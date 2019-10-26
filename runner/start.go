@@ -3,8 +3,10 @@ package runner
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -87,6 +89,22 @@ func init() {
 	stopChannel = make(chan bool)
 }
 
+func initSignalTraps() {
+	sigIntChannel := make(chan os.Signal)
+	signal.Notify(sigIntChannel, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigIntChannel
+		mainLog("sigint received - killing child processes - [waiting for 2 seconds]")
+		time.AfterFunc(time.Second*2, func() {
+			mainLog("done waiting :)")
+			os.Exit(1)
+		})
+
+		stopChannel <- true
+	}()
+
+}
+
 func initLogFuncs() {
 	mainLog = newLogFunc("main")
 	watcherLog = newLogFunc("watcher")
@@ -116,6 +134,7 @@ func Start() {
 	initSettings()
 	initLogFuncs()
 	initFolders()
+	initSignalTraps()
 	setEnvVars()
 	watch()
 	start()

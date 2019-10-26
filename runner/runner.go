@@ -3,15 +3,18 @@ package runner
 import (
 	"io"
 	"os/exec"
+	"syscall"
 )
 
 func getRunCommand(debug bool) (string, []string) {
 	if debug {
 		return "dlv", []string{"exec",
 			buildPath(),
+			"--continue",
 			"--listen=:40000",
 			"--headless",
 			"--api-version=2",
+			"--accept-multiclient",
 			// "--log",
 		}
 	}
@@ -24,7 +27,7 @@ func run(debug bool) bool {
 
 	cname, args := getRunCommand(debug)
 	cmd := exec.Command(cname, args...)
-
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		fatal(err)
@@ -50,8 +53,15 @@ func run(debug bool) bool {
 	go func() {
 		<-stopChannel
 		pid := cmd.Process.Pid
-		runnerLog("Killing PID %d", pid)
-		cmd.Process.Kill()
+		pgid, err := syscall.Getpgid(pid)
+		if err != nil {
+			runnerLog("error getting pgid for process %d - %s", pid, err.Error())
+		}
+		runnerLog("Killing pgid(pid) - %d(%d)", pgid, pid)
+		err = syscall.Kill(-pid, syscall.SIGINT)
+		if err != nil {
+			runnerLog("could not kill pid - %d", pid)
+		}
 	}()
 
 	return true

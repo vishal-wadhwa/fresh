@@ -37,6 +37,13 @@ func start() {
 	buildDelay := buildDelay()
 
 	started := false
+	var killAllFn KillFn
+	go func() {
+		<-stopChannel
+		if killAllFn != nil {
+			killAllFn()
+		}
+	}()
 
 	go func() {
 		for {
@@ -73,9 +80,9 @@ func start() {
 
 			if !buildFailed {
 				if started {
-					stopChannel <- true
+					killAllFn()
 				}
-				run(debug)
+				killAllFn = run(debug)
 			}
 
 			started = true
@@ -90,7 +97,7 @@ func init() {
 }
 
 func initSignalTraps() {
-	sigIntChannel := make(chan os.Signal)
+	sigIntChannel := make(chan os.Signal, 1)
 	signal.Notify(sigIntChannel, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigIntChannel

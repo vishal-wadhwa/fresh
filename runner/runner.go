@@ -1,33 +1,33 @@
 package runner
 
 import (
+	"context"
 	"io"
 	"os/exec"
-	"syscall"
+	"strconv"
 )
 
-func getRunCommand(debug bool) (string, []string) {
-	if debug {
-		return "dlv", []string{"exec",
-			buildPath(),
-			"--continue",
-			"--listen=:40000",
-			"--headless",
-			"--api-version=2",
-			"--accept-multiclient",
-			// "--log",
-		}
-	}
-
-	return buildPath(), []string{}
+func getDebugCommand(pid int) (string, []string) {
+	return "dlv", []string{"attach",
+		strconv.Itoa(pid),
+		"--listen=:40000",
+		"--headless",
+		"--api-version=2",
+		"--accept-multiclient"}
+	// "--log",
 }
 
-func run(debug bool) bool {
-	runnerLog("Running (isDebug: %v)...", debug)
+// KillFn specifies the type for function which kills processes spawned by fresh-dlv
+type KillFn func()
 
-	cname, args := getRunCommand(debug)
-	cmd := exec.Command(cname, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+func run(debug bool) KillFn {
+	runnerLog("Running (isDebug: %v)...", debug)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var debugCmd *exec.Cmd
+	var cancelDebugger context.CancelFunc
+	cmd := exec.CommandContext(ctx, buildPath())
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		fatal(err)
@@ -43,26 +43,37 @@ func run(debug bool) bool {
 		fatal(err)
 	}
 
-	var writer io.Writer = appLogWriter{}
+	writer := appLogWriter{}
 	if debug {
-		writer = debuggerLogWriter{}
+		writer := debuggerLogWriter{}
+		cname, args := getDebugCommand(cmd.Process.Pid)
+		ctx, cancelDebugger = context.WithCancel(context.Background())
+		debugCmd = exec.CommandContext(ctx, cname, args...)
+
+		stdout, err := debugCmd.StdoutPipe()
+		if err != nil {
+			fatal(err)
+		}
+
+		stderr, err := debugCmd.StderrPipe()
+		if err != nil {
+			fatal(err)
+		}
+
+		if err := debugCmd.Start(); err != nil {
+			fatal(err)
+		}
+
+		go io.Copy(writer, stderr)
+		go io.Copy(writer, stdout)
 	}
 	go io.Copy(writer, stderr)
 	go io.Copy(writer, stdout)
 
-	go func() {
-		<-stopChannel
-		pid := cmd.Process.Pid
-		pgid, err := syscall.Getpgid(pid)
-		if err != nil {
-			runnerLog("error getting pgid for process %d - %s", pid, err.Error())
+	return func() {
+		cancel()
+		if cancelDebugger != nil {
+			cancelDebugger()
 		}
-		runnerLog("Killing pgid(pid) - %d(%d)", pgid, pid)
-		err = syscall.Kill(-pid, syscall.SIGINT)
-		if err != nil {
-			runnerLog("could not kill pid - %d", pid)
-		}
-	}()
-
-	return true
+	}
 }

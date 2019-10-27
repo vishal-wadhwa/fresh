@@ -66,6 +66,9 @@ Here is a sample config file with the default settings:
     log_color_debugger: red
     log_color_app:
 
+## Known Issues:
+1. Leaves zombie process on mac mojave 10.14.6 (can't seem to find a fix :/)
+2. Haven't tested on other platforms
 
 ## Author
 

@@ -10,6 +10,7 @@ import (
 func getBuildCommand(debug bool) (string, []string) {
 	args := []string{"build"}
 	if debug {
+		// mac os : -ldflags=-compressdwarf=false
 		args = append(args, "-gcflags=\"all=-N -l\"")
 	}
 	buildDest := []string{"-o", buildPath(), root()}
